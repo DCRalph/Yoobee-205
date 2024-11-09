@@ -1,0 +1,9 @@
+# Ignore frontend directory
+frontend/
+
+# Ignore other files that are not necessary for deployment
+*.md
+*.env
+*.log
+node_modules/
+package-lock.json
