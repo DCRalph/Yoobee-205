@@ -148,16 +148,18 @@ STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
-SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
- 
-SITE_ID = 2
-META_SITE_PROTOCOL = 'https'
-META_SITE_DOMAIN = 'scrapecity.xyz'
+if "PYTHONPATH" in os.environ:
 
-SECURE_SSL_REDIRECT = True
-SESSION_COOKIE_SECURE = True
-CSRF_COOKIE_SECURE = True
-SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
+    SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
+    
+    SITE_ID = 2
+    META_SITE_PROTOCOL = 'https'
+    META_SITE_DOMAIN = 'scrapecity.xyz'
 
-PREPEND_WWW = True
-BASE_URL = "https://www.scrapecity.xyz"
+    SECURE_SSL_REDIRECT = True
+    SESSION_COOKIE_SECURE = True
+    CSRF_COOKIE_SECURE = True
+    SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
+
+    PREPEND_WWW = True
+    BASE_URL = "https://www.scrapecity.xyz"
