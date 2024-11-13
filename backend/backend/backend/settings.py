@@ -182,28 +182,3 @@ if "PYTHONPATH" in os.environ:
 
     PREPEND_WWW = True
     BASE_URL = "https://www.scrapecity.xyz"
-    
-LOGGING = {
-    'version': 1,
-    'disable_existing_loggers': False,
-    'handlers': {
-        'console': {
-            'class': 'logging.StreamHandler',
-        },
-    },
-    'loggers': {
-        '': {  # Root logger
-            'handlers': ['console'],
-            'level': 'DEBUG',
-        },
-        'django': {
-            'handlers': ['console'],
-            'level': 'INFO',
-        },
-        'backend': {  # Replace with your actual app name
-            'handlers': ['console'],
-            'level': 'DEBUG',
-            'propagate': False,
-        },
-    },
-}
