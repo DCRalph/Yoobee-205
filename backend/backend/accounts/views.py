@@ -9,45 +9,120 @@ from django.views.decorators.csrf import csrf_exempt
 from rest_framework_simplejwt.tokens import RefreshToken, TokenError
 from rest_framework_simplejwt.authentication import JWTAuthentication
 import json
+import logging
 
-@method_decorator(csrf_exempt, name='dispatch')  # Disable CSRF for simplicity (use only in development)
+# Set up logging for debugging
+logger = logging.getLogger(__name__)
+
+@method_decorator(csrf_exempt, name='dispatch')
 class RegisterView(View):
     def post(self, request):
-        data = json.loads(request.body)
-        username = data.get("username")
-        password = data.get("password")
-        email = data.get("email")
-        
-        if User.objects.filter(username=username).exists():
-            return JsonResponse({"error": "Username already exists"}, status=400)
+        try:
+            logger.info("Received POST request to RegisterView")
 
-        if User.objects.filter(email=email).exists():
-            return JsonResponse({"error": "Email already exists"}, status=400)
+            # Attempt to parse JSON data from the request body
+            try:
+                data = json.loads(request.body)
+                logger.info("Request body successfully parsed")
+            except json.JSONDecodeError as e:
+                logger.error("Failed to parse JSON: %s", e)
+                return JsonResponse({"error": "Invalid JSON format"}, status=400)
 
-        user = User.objects.create_user(username=username, password=password, email=email)
-        return JsonResponse({"message": "User registered successfully"}, status=201)
+            # Extract username, password, and email from the parsed data
+            username = data.get("username")
+            password = data.get("password")
+            email = data.get("email")
 
-@method_decorator(csrf_exempt, name='dispatch')  # Disable CSRF for simplicity (use only in development)
+            # Log extracted values for debugging
+            logger.debug("Username: %s, Email: %s", username, email)
+
+            # Validate fields
+            if not username or not password or not email:
+                logger.error("Missing required fields")
+                return JsonResponse({"error": "Username, password, and email are required"}, status=400)
+
+            # Check if the username already exists
+            if User.objects.filter(username=username).exists():
+                logger.warning("Username already exists: %s", username)
+                return JsonResponse({"error": "Username already exists"}, status=400)
+
+            # Check if the email already exists
+            if User.objects.filter(email=email).exists():
+                logger.warning("Email already exists: %s", email)
+                return JsonResponse({"error": "Email already exists"}, status=400)
+
+            # Create a new user
+            try:
+                user = User.objects.create_user(username=username, password=password, email=email)
+                logger.info("User created successfully: %s", username)
+            except Exception as e:
+                logger.error("Failed to create user: %s", e)
+                return JsonResponse({"error": "Failed to create user"}, status=500)
+
+            return JsonResponse({"message": "User registered successfully"}, status=201)
+
+        except Exception as e:
+            # Catch any other unexpected exceptions
+            logger.exception("Unexpected error in RegisterView: %s", e)
+            return JsonResponse({"error": "An unexpected error occurred"}, status=500)
+
+@method_decorator(csrf_exempt, name='dispatch')
 class LoginView(View):
     def post(self, request):
-        data = json.loads(request.body)
-        username = data.get("username")
-        password = data.get("password")
+        try:
+            logger.info("Received POST request to LoginView")
 
-        user = authenticate(request, username=username, password=password)
+            # Attempt to parse JSON data from the request body
+            try:
+                data = json.loads(request.body)
+                logger.info("Request body successfully parsed")
+            except json.JSONDecodeError as e:
+                logger.error("Failed to parse JSON: %s", e)
+                return JsonResponse({"error": "Invalid JSON format"}, status=400)
 
-        if user is not None:
-            login(request, user)  # Log the user in
-            refresh = RefreshToken.for_user(user)  # Create a token for the user
-            return JsonResponse({
-                "message": "User logged in successfully",
-                "access": str(refresh.access_token),  # Return the access token
-                "refresh": str(refresh),  # return the refresh token
-            }, status=200)
-        else:
-            return JsonResponse({"error": "Invalid username or password"}, status=401)
+            # Extract username and password from the parsed data
+            username = data.get("username")
+            password = data.get("password")
 
-@method_decorator(csrf_exempt, name='dispatch')  # Disable CSRF for simplicity (use only in development)
+            # Log extracted values for debugging
+            logger.debug("Username: %s", username)
+
+            # Validate that username and password are provided
+            if not username or not password:
+                logger.error("Missing username or password")
+                return JsonResponse({"error": "Username and password are required"}, status=400)
+
+            # Authenticate the user
+            user = authenticate(request, username=username, password=password)
+            if user is not None:
+                # Log in the user
+                login(request, user)
+                logger.info("User authenticated and logged in: %s", username)
+
+                # Generate tokens for the user
+                try:
+                    refresh = RefreshToken.for_user(user)
+                    logger.info("JWT tokens generated successfully for user: %s", username)
+                except Exception as e:
+                    logger.error("Failed to generate tokens: %s", e)
+                    return JsonResponse({"error": "Token generation failed"}, status=500)
+
+                # Return the access and refresh tokens
+                return JsonResponse({
+                    "message": "User logged in successfully",
+                    "access": str(refresh.access_token),
+                    "refresh": str(refresh),
+                }, status=200)
+            else:
+                logger.warning("Invalid username or password for user: %s", username)
+                return JsonResponse({"error": "Invalid username or password"}, status=401)
+
+        except Exception as e:
+            # Catch any other unexpected exceptions
+            logger.exception("Unexpected error in LoginView: %s", e)
+            return JsonResponse({"error": "An unexpected error occurred"}, status=500)
+
+@method_decorator(csrf_exempt, name='dispatch')
 class VerifyTokenView(View):
     def post(self, request):
         token = request.headers.get('Authorization')  # Get the token from the Authorization header
@@ -78,10 +153,14 @@ class VerifyTokenView(View):
                 }
             }
             return JsonResponse(response_data, status=200)
-        except TokenError:
+        except TokenError as e:
+            print(e)
             return JsonResponse({"error": "Token is invalid or expired"}, status=401)
         except User.DoesNotExist:
             return JsonResponse({"error": "User does not exist"}, status=404)
+        except Exception as e:
+            print(e)
+            return JsonResponse({"error": "Something unexpected happened"}, status=500)        
         
 
 @method_decorator(csrf_exempt, name='dispatch')
@@ -127,9 +206,15 @@ class UpdateAccountView(View):
                 }
             }, status=200)
         
-        except TokenError:
+        except TokenError as e:
+            print(e)
             return JsonResponse({"error": "Token is invalid or expired"}, status=401)
-        except User.DoesNotExist:
+        except User.DoesNotExist as e:
+            print(e)
             return JsonResponse({"error": "User does not exist"}, status=404)
-        except json.JSONDecodeError:
+        except json.JSONDecodeError as e:
+            print(e)
             return JsonResponse({"error": "Invalid JSON data"}, status=400)
+        except Exception as e:
+            print(e)
+            return JsonResponse({"error": "Something unexpected happened"}, status=500)
